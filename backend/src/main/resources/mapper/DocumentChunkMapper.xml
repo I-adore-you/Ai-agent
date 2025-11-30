@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.DocumentChunkMapper">
+
+    <resultMap id="BaseResultMap" type="com.aiagent.model.DocumentChunk">
+        <id column="id" property="id"/>
+        <result column="document_id" property="documentId"/>
+        <result column="chunk_index" property="chunkIndex"/>
+        <result column="content" property="content"/>
+        <result column="vector_id" property="vectorId"/>
+        <result column="embedding" property="embedding" typeHandler="org.apache.ibatis.type.ArrayTypeHandler"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.aiagent.model.DocumentChunk">
+        INSERT INTO document_chunks (id, document_id, chunk_index, content, vector_id, embedding, created_at)
+        VALUES (#{id}, #{documentId}, #{chunkIndex}, #{content}, #{vectorId}, #{embedding, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}, #{createdAt})
+    </insert>
+
+    <insert id="insertBatch" parameterType="list">
+        INSERT INTO document_chunks (id, document_id, chunk_index, content, vector_id, embedding, created_at)
+        VALUES
+        <foreach collection="chunks" item="chunk" separator=",">
+            (#{chunk.id}, #{chunk.documentId}, #{chunk.chunkIndex}, #{chunk.content}, #{chunk.vectorId}, #{chunk.embedding, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}, #{chunk.createdAt})
+        </foreach>
+    </insert>
+
+    <select id="selectById" parameterType="string" resultMap="BaseResultMap">
+        SELECT * FROM document_chunks
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <select id="selectByDocumentId" parameterType="string" resultMap="BaseResultMap">
+        SELECT * FROM document_chunks
+        WHERE document_id = #{documentId} AND deleted_at IS NULL
+        ORDER BY chunk_index ASC
+    </select>
+
+    <select id="selectByVectorId" parameterType="string" resultMap="BaseResultMap">
+        SELECT * FROM document_chunks
+        WHERE vector_id = #{vectorId} AND deleted_at IS NULL
+    </select>
+
+    <update id="deleteById" parameterType="string">
+        UPDATE document_chunks
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteByDocumentId" parameterType="string">
+        UPDATE document_chunks
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE document_id = #{documentId}
+    </update>
+    
+    <select id="searchSimilar" resultMap="BaseResultMap">
+        SELECT * FROM document_chunks
+        WHERE deleted_at IS NULL AND embedding IS NOT NULL
+        ORDER BY embedding <-> #{embedding, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
+        LIMIT #{topK}
+    </select>
+    
+    <select id="searchSimilarWithScore" resultType="java.util.Map">
+        SELECT 
+            dc.*, 
+            (1 - (embedding <-> #{embedding, typeHandler=org.apache.ibatis.type.ArrayTypeHandler})) as similarity_score
+        FROM document_chunks dc
+        WHERE deleted_at IS NULL AND embedding IS NOT NULL
+        ORDER BY similarity_score DESC
+        LIMIT #{topK}
+    </select>
+
+</mapper>
+

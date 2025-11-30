@@ -1,0 +1,86 @@
+# Spring Boot 应用配置示例 - 使用 Ollama
+# 复制此文件为 application.yml 并根据实际情况修改
+
+spring:
+  application:
+    name: ai-agent
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ai_agent_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  
+  # MyBatis 配置
+  mybatis:
+    mapper-locations: classpath:mapper/*.xml
+    type-aliases-package: com.aiagent.model
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  
+  # Spring AI - Ollama 配置
+  ai:
+    # Ollama Chat 配置
+    ollama:
+      base-url: http://localhost:11434  # Ollama 服务地址
+      chat:
+        options:
+          model: llama2  # 模型名称，可选：mistral, codellama, qwen2.5 等
+          temperature: 0.7  # 创造性（0-1），值越高越有创造性
+          num-predict: 2000  # 最大生成 token 数
+          top-p: 0.9  # 核采样参数
+          top-k: 40  # Top-K 采样参数
+          repeat-penalty: 1.1  # 重复惩罚，减少重复内容
+    
+    # Ollama Embedding 配置（用于向量化）
+    embedding:
+      ollama:
+        base-url: http://localhost:11434
+        options:
+          model: nomic-embed-text  # Embedding 模型
+          # 下载命令：ollama pull nomic-embed-text
+    
+    # 向量存储配置
+    vectorstore:
+      postgresql:
+        index-type: HNSW  # 索引类型
+        distance-type: COSINE_DISTANCE  # 距离类型
+        dimensions: 768  # 向量维度（nomic-embed-text 为 768）
+        # 注意：如果使用 OpenAI embedding，维度为 1536
+
+# 服务器配置
+server:
+  port: 8080
+  compression:
+    enabled: true
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    org.springframework.ai: DEBUG  # 启用 AI 相关调试日志
+    com.aiagent: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30
+
+# 管理端点配置（可选）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+

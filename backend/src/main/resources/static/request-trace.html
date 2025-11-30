@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请求追踪 - 确认后端接收</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .status-box {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .status-item:last-child { border-bottom: none; }
+        .status-label { font-weight: 600; color: #666; }
+        .status-value { color: #333; }
+        .success { color: #28a745; font-weight: 600; }
+        .error { color: #dc3545; font-weight: 600; }
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        button:hover { background: #5568d3; }
+        .log-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+        }
+        .log-success { color: #4ec9b0; }
+        .log-error { color: #f48771; }
+        .log-info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 请求追踪 - 确认后端接收</h1>
+        
+        <div class="status-box">
+            <div class="status-item">
+                <span class="status-label">后端服务状态:</span>
+                <span class="status-value" id="backendStatus">检查中...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Ollama 服务状态:</span>
+                <span class="status-value" id="ollamaStatus">检查中...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">API 请求状态:</span>
+                <span class="status-value" id="apiStatus">未测试</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">请求到达后端:</span>
+                <span class="status-value" id="requestReceived">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">调用 Ollama:</span>
+                <span class="status-value" id="ollamaCalled">-</span>
+            </div>
+        </div>
+
+        <button onclick="testRequest()">🚀 发送测试请求</button>
+
+        <div class="log-box" id="logBox">
+            <div class="log-entry log-info">等待测试...</div>
+        </div>
+    </div>
+
+    <script>
+        const logBox = document.getElementById('logBox');
+        
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logBox.appendChild(logEntry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function updateStatus(id, value, isSuccess) {
+            const element = document.getElementById(id);
+            element.textContent = value;
+            element.className = isSuccess ? 'status-value success' : 'status-value error';
+        }
+
+        // 检查服务状态
+        async function checkServices() {
+            // 检查后端
+            try {
+                const response = await fetch('http://localhost:8080/api/test/health');
+                const data = await response.json();
+                updateStatus('backendStatus', data.status === 'ok' ? '✅ 运行中' : '❌ 异常', data.status === 'ok');
+                addLog('后端服务检查: ' + (data.status === 'ok' ? '正常' : '异常'), data.status === 'ok' ? 'success' : 'error');
+            } catch (e) {
+                updateStatus('backendStatus', '❌ 无法连接', false);
+                addLog('后端服务检查: 无法连接 - ' + e.message, 'error');
+            }
+
+            // 检查 Ollama
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                const data = await response.json();
+                updateStatus('ollamaStatus', data.models ? `✅ 运行中 (${data.models.length} 个模型)` : '❌ 异常', !!data.models);
+                addLog('Ollama 服务检查: ' + (data.models ? '正常' : '异常'), data.models ? 'success' : 'error');
+            } catch (e) {
+                updateStatus('ollamaStatus', '❌ 无法连接', false);
+                addLog('Ollama 服务检查: 无法连接 - ' + e.message, 'error');
+            }
+        }
+
+        async function testRequest() {
+            addLog('========== 开始测试请求 ==========', 'info');
+            updateStatus('apiStatus', '⏳ 发送中...', true);
+            updateStatus('requestReceived', '-', false);
+            updateStatus('ollamaCalled', '-', false);
+
+            const testMessage = '测试消息：' + new Date().toLocaleTimeString();
+            addLog(`发送消息: ${testMessage}`, 'info');
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch('http://localhost:8080/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: testMessage, useRAG: false })
+                });
+
+                const endTime = Date.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`✅ 请求成功 (耗时: ${duration}秒)`, 'success');
+                    updateStatus('apiStatus', `✅ 成功 (${duration}秒)`, true);
+                    
+                    if (data.success && data.data) {
+                        updateStatus('requestReceived', '✅ 已到达后端', true);
+                        updateStatus('ollamaCalled', '✅ 已调用 Ollama', true);
+                        addLog(`AI 回复: ${data.data.message.substring(0, 100)}...`, 'success');
+                        addLog(`响应时间: ${data.data.metadata?.responseTime?.toFixed(2)}秒`, 'info');
+                        addLog(`模型: ${data.data.metadata?.model}`, 'info');
+                        addLog('========== 测试完成 ==========', 'success');
+                    } else {
+                        updateStatus('requestReceived', '⚠️ 部分成功', false);
+                        addLog('响应格式异常: ' + JSON.stringify(data), 'error');
+                    }
+                } else {
+                    updateStatus('apiStatus', '❌ 请求失败', false);
+                    addLog(`❌ HTTP 错误: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('apiStatus', '❌ 请求异常', false);
+                addLog(`❌ 请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载时检查服务
+        checkServices();
+    </script>
+</body>
+</html>
+

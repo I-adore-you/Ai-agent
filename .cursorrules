@@ -1,0 +1,113 @@
+# Cursor AI 规则配置
+
+## 项目概述
+这是一个基于 Spring Boot 3.2.0 + Spring AI + MyBatis + PostgreSQL 的 AI 对话应用后端项目。
+先不考虑，项目的是否可用于生产，先完成项目的核心，后面的埋点和监控、生产级部署可以后续再说。
+所需要的 中间件基本都已通过docker安装，包括数据库、redis、ollama等。
+
+## 技术栈
+- Java 21
+- Spring Boot 3.2.0
+- Spring AI 1.0.0-M4 (Ollama（本地通过docker已安装） 支持,底层大模型使用的是deepseek)
+- MyBatis 3.0.3
+- PostgreSQL + pgvector
+- redis 用于缓存
+- Lombok
+
+## 代码规范
+
+### 命名规范
+- 类名：大驼峰（PascalCase），如 `ChatController`, `RAGService`
+- 方法名：小驼峰（camelCase），如 `getConversation`, `processDocument`
+- 常量：全大写下划线分隔，如 `MAX_RETRY_COUNT`
+- 包名：全小写，如 `com.aiagent.service`
+- 数据库表名：小写下划线分隔，如 `chat_conversations`
+- 数据库字段名：小写下划线分隔，如 `conversation_id`
+
+### 文件结构
+- Controller: `com.aiagent.controller`
+- Service: `com.aiagent.service` (接口) 和 `com.aiagent.service.impl` (实现)
+- Mapper: `com.aiagent.mapper` (MyBatis 接口)
+- Model: `com.aiagent.model` (实体类)
+- DTO: `com.aiagent.dto` (数据传输对象)
+- Config: `com.aiagent.config` (配置类)
+
+### 代码风格
+- 使用 4 个空格缩进（不使用 Tab）
+- 行长度限制：120 字符
+- 文件头注释必须包含：`@author ego` 和 `@date`
+- 所有 public 方法必须有 JavaDoc 注释
+- 使用 Lombok 简化代码（@Data, @Builder, @Slf4j 等）
+
+### Spring 规范
+- Controller 使用 `@RestController` 和 `@RequestMapping("/api/xxx")`
+- Service 接口和实现分离，实现类使用 `@Service`
+- 使用 `@Autowired` 或构造函数注入（推荐构造函数注入）
+- 统一异常处理使用 `@ControllerAdvice`
+
+### MyBatis 规范
+- Mapper 接口使用 `@Mapper` 注解
+- XML 映射文件放在 `src/main/resources/mapper/` 目录
+- 使用 resultMap 进行结果映射
+- SQL 使用参数化查询，防止 SQL 注入
+- 复杂查询使用 XML，简单查询可以使用注解
+
+### API 设计规范
+- RESTful 风格
+- 统一响应格式：`{success: boolean, data: T, message: string, timestamp: string}`
+- 统一错误格式：`{success: false, error: {code: string, message: string}}`
+- 使用 HTTP 状态码：200(成功), 201(创建), 400(参数错误), 401(未授权), 404(不存在), 500(服务器错误)
+
+### 数据库规范
+- 表名使用复数形式，如 `documents`, `conversations`
+- 必须有 `id` 主键（UUID 或自增）
+- 必须有 `created_at` 和 `updated_at` 时间戳字段
+- 使用软删除（`deleted_at` 字段）而非物理删除
+- 索引命名：`idx_表名_字段名`
+
+## AI 相关规范
+
+### Spring AI 使用
+- 使用 Ollama 作为本地 AI 模型（默认 deepseek-coder）
+- Embedding 使用 nomic-embed-text（维度 768）
+- 向量存储使用 PostgreSQL + pgvector
+- RAG 检索时返回 Top-K 相关文档块
+
+### 对话处理
+- 支持多轮对话，使用 conversationId 关联
+- 支持 RAG 模式（检索增强生成）
+- 支持 Agent 模式（工具调用）
+- 记录对话历史到数据库
+
+## 开发规范
+
+### 提交规范
+- 提交信息格式：`type(scope): description`
+- type: feat(新功能), fix(修复), docs(文档), style(格式), refactor(重构), test(测试), chore(构建)
+- 示例：`feat(chat): 添加对话历史查询接口`
+
+### 测试规范
+- 单元测试放在 `src/test/java` 对应包下
+- 测试类命名：`被测试类名 + Test`
+- 使用 JUnit 5 和 Mockito
+
+### 日志规范
+- 使用 SLF4J + Logback
+- 日志级别：DEBUG(开发), INFO(生产), WARN(警告), ERROR(错误)
+- 关键操作必须记录日志
+- 敏感信息不能记录到日志
+
+## 禁止事项
+- 不要使用 `System.out.println`，使用日志框架
+- 不要硬编码配置，使用配置文件或环境变量
+- 不要忽略异常，必须处理或记录
+- 不要使用魔法数字，使用常量
+- 不要提交敏感信息（API Key、密码等）到代码库
+
+## 代码生成要求
+- 生成代码时自动添加文件头注释（@author ego）
+- 遵循上述所有规范
+- 优先使用 Spring Boot 最佳实践
+- 考虑性能和安全性
+- 添加必要的空值检查和异常处理
+

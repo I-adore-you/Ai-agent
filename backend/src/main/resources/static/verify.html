@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>验证请求到达后端</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .box { background: white; padding: 20px; border-radius: 10px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 验证请求是否到达后端系统</h1>
+    
+    <div class="box">
+        <h2>1. 后端服务检查</h2>
+        <div id="backendCheck">检查中...</div>
+    </div>
+    
+    <div class="box">
+        <h2>2. 发送测试请求</h2>
+        <button onclick="sendTest()">发送测试消息</button>
+        <div id="testResult" style="margin-top: 10px;"></div>
+    </div>
+    
+    <div class="box">
+        <h2>3. 请求详情</h2>
+        <pre id="requestDetails">等待测试...</pre>
+    </div>
+
+    <script>
+        // 检查后端
+        fetch('http://localhost:8080/api/test/health')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('backendCheck').innerHTML = 
+                    data.status === 'ok' 
+                        ? '<span class="success">✅ 后端服务运行正常</span>' 
+                        : '<span class="error">❌ 后端服务异常</span>';
+            })
+            .catch(e => {
+                document.getElementById('backendCheck').innerHTML = 
+                    '<span class="error">❌ 无法连接到后端: ' + e.message + '</span>';
+            });
+
+        function sendTest() {
+            const resultDiv = document.getElementById('testResult');
+            const detailsDiv = document.getElementById('requestDetails');
+            
+            resultDiv.innerHTML = '⏳ 发送中...';
+            detailsDiv.textContent = '等待响应...';
+            
+            const testMsg = '验证测试：' + new Date().toLocaleTimeString();
+            const startTime = Date.now();
+            
+            fetch('http://localhost:8080/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: testMsg, useRAG: false })
+            })
+            .then(response => {
+                const endTime = Date.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+                
+                return response.json().then(data => {
+                    if (data.success && data.data) {
+                        resultDiv.innerHTML = `
+                            <span class="success">✅ 请求成功到达后端！</span><br>
+                            <strong>响应时间:</strong> ${duration}秒<br>
+                            <strong>AI 回复:</strong> ${data.data.message.substring(0, 100)}...<br>
+                            <strong>模型:</strong> ${data.data.metadata?.model || 'N/A'}<br>
+                            <strong>后端处理时间:</strong> ${data.data.metadata?.responseTime?.toFixed(2) || 'N/A'}秒
+                        `;
+                        
+                        detailsDiv.textContent = JSON.stringify(data, null, 2);
+                    } else {
+                        resultDiv.innerHTML = '<span class="error">❌ 请求失败</span>';
+                        detailsDiv.textContent = JSON.stringify(data, null, 2);
+                    }
+                });
+            })
+            .catch(error => {
+                resultDiv.innerHTML = '<span class="error">❌ 请求异常: ' + error.message + '</span>';
+                detailsDiv.textContent = '错误: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>
+

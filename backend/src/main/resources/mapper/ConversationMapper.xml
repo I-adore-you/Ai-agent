@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.ConversationMapper">
+
+    <resultMap id="BaseResultMap" type="com.aiagent.model.Conversation">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="type" property="type"/>
+        <result column="last_message" property="lastMessage"/>
+        <result column="message_count" property="messageCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.aiagent.model.Conversation">
+        INSERT INTO conversations (id, title, type, last_message, message_count, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{type}, #{lastMessage}, #{messageCount}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectById" parameterType="string" resultMap="BaseResultMap">
+        SELECT * FROM conversations
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM conversations
+        WHERE deleted_at IS NULL
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+        ORDER BY updated_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM conversations
+        WHERE deleted_at IS NULL
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+    </select>
+
+    <update id="update" parameterType="com.aiagent.model.Conversation">
+        UPDATE conversations
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="lastMessage != null">last_message = #{lastMessage},</if>
+            <if test="messageCount != null">message_count = #{messageCount},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteById" parameterType="string">
+        UPDATE conversations
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+</mapper>
+

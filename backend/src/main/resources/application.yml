@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: ai-agent
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ai_agent_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  
+  # MyBatis 配置
+  mybatis:
+    mapper-locations: classpath:mapper/*.xml
+    type-aliases-package: com.aiagent.model
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+      default-statement-timeout: 30
+  
+  # Spring AI - Ollama 配置
+  ai:
+    # Ollama Chat 配置
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: deepseek-coder
+          temperature: 0.7
+          num-predict: 2000
+    
+    # Ollama Embedding 配置（用于向量化）
+    embedding:
+      ollama:
+        base-url: http://localhost:11434
+        options:
+          model: nomic-embed-text
+    
+    # 向量存储配置
+    vectorstore:
+      postgresql:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+    
+    # RAG 配置
+    rag:
+      top-k: 5
+      chunk-size: 1000
+      chunk-overlap: 200
+
+# 服务器配置
+server:
+  port: 8080
+  compression:
+    enabled: true
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    org.springframework.ai: DEBUG
+    com.aiagent: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+
+

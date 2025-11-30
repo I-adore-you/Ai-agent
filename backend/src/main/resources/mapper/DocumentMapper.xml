@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.DocumentMapper">
+
+    <resultMap id="BaseResultMap" type="com.aiagent.model.Document">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="status" property="status"/>
+        <result column="chunk_count" property="chunkCount"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="deleted_at" property="deletedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.aiagent.model.Document">
+        INSERT INTO documents (id, title, file_name, file_type, file_size, status, chunk_count, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{fileName}, #{fileType}, #{fileSize}, #{status}, #{chunkCount}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectById" parameterType="string" resultMap="BaseResultMap">
+        SELECT * FROM documents
+        WHERE id = #{id} AND deleted_at IS NULL
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM documents
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="search != null and search != ''">
+            AND (title LIKE CONCAT('%', #{search}, '%') OR file_name LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM documents
+        WHERE deleted_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="search != null and search != ''">
+            AND (title LIKE CONCAT('%', #{search}, '%') OR file_name LIKE CONCAT('%', #{search}, '%'))
+        </if>
+    </select>
+
+    <update id="update" parameterType="com.aiagent.model.Document">
+        UPDATE documents
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="chunkCount != null">chunk_count = #{chunkCount},</if>
+            <if test="errorMessage != null">error_message = #{errorMessage},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteById" parameterType="string">
+        UPDATE documents
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+</mapper>
+
