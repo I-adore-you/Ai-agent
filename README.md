@@ -599,15 +599,3 @@ A: 在 `.env` 文件中设置：
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-## 📝 许可证
-
-MIT License
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📧 联系方式
-
-如有问题，请提交 Issue 或联系项目维护者。
-
